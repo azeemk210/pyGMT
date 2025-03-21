@@ -1,42 +1,65 @@
+import numpy as np
 import pygmt
 
-# Define the two points (latitude, longitude)
-point1 = [37.7749, -122.4194]  # San Francisco, CA
-point2 = [34.0522, -118.2437]  # Los Angeles, CA
+def plot_geodetic_curve(point1, point2, output_file="geodetic_curve_map.png", dpi=300):
+    """
+    Plot a geodetic curve between two points on a map and save the figure.
+    
+    Parameters:
+    point1 (list or tuple): Coordinates of the first point [longitude, latitude].
+    point2 (list or tuple): Coordinates of the second point [longitude, latitude].
+    output_file (str): Name of the output file to save the figure (default: "geodetic_curve_map.png").
+    dpi (int): Resolution of the output figure in dots per inch (default: 300).
+    """
+    # Extract longitude and latitude for both points
+    lon1, lat1 = point1
+    lon2, lat2 = point2
 
-# Create a PyGMT figure
-fig = pygmt.Figure()
+    # Dynamically determine the region to cover both points with some padding
+    lon_min = min(lon1, lon2) - 5  # Add 5 degrees padding on each side
+    lon_max = max(lon1, lon2) + 5
+    lat_min = min(lat1, lat2) - 5
+    lat_max = max(lat1, lat2) + 5
 
-# Set the region to include both points
-fig.basemap(region=[-125, -115, 32, 40], projection="M15c", frame=True)
+    # Ensure the region stays within valid geographic bounds
+    lon_min = max(-180, lon_min)
+    lon_max = min(180, lon_max)
+    lat_min = max(-90, lat_min)
+    lat_max = min(90, lat_max)
 
-# Plot the coastlines
-fig.coast(shorelines="1/0.5p,black", land="lightgray", water="lightblue")
+    # Create a plot with coast, Mercator projection (M)
+    fig = pygmt.Figure()
+    fig.coast(
+        region=[lon_min, lon_max, lat_min, lat_max],  # Dynamic region based on points
+        projection="M15c",
+        frame=True,
+        borders=1,
+        area_thresh=4000,
+        shorelines="0.25p,black",
+    )
 
-# Plot the two points
-fig.plot(
-    x=[point1[1], point2[1]],  # Longitudes
-    y=[point1[0], point2[0]],  # Latitudes
-    style="c0.3c",  # Circle with 0.3 cm diameter
-    fill="red",  # Fill color
-    pen="black",  # Outline color
-    label="Cities",
-)
+    # Prepare data for the geodetic curve
+    data = np.array([list(point1) + list(point2)])
 
-# Plot the geodetic curve (great-circle path) between the two points
-fig.plot(
-    x=[point1[1], point2[1]],  # Longitudes
-    y=[point1[0], point2[0]],  # Latitudes
-    pen="2p,blue",  # Line thickness and color
-    straight_line=True,  # Ensures a great-circle path
-    label="Geodetic Curve",
-)
+    # Plot geographic geodetic curve between the two points
+    fig.plot(
+        data=data,
+        style="=0.5c+s+e+a30+gblue+h0.5+p1p,blue",  # Geographic curve with endpoints
+        pen="1.0p,blue"
+    )
 
-# Add a legend
-fig.legend(position="jBL+jBL+o0.2c", box=True)
+    # Add markers for the two points
+    fig.plot(x=lon1, y=lat1, style="c0.3c", fill="blue", pen="1p,black")
+    fig.plot(x=lon2, y=lat2, style="c0.3c", fill="blue", pen="1p,black")
 
-# Save the figure
-fig.savefig("geodetic_curve_map.png", dpi=300)
+    # Add labels for the two points (labels are "Point 1" and "Point 2")
+    fig.text(text="Point 1", x=lon1, y=lat1+2, font="10p,Helvetica,blue")
+    fig.text(text="Point 2", x=lon2, y=lat2+2, font="10p,Helvetica,blue")
 
-# Display the figure
-fig.show()
+    # Save the figure
+    fig.savefig(output_file, dpi=dpi)
+
+# Example usage with Vienna and Delhi
+VIENNA = [16.3738, 48.2082]  # Vienna coordinates (lon, lat)
+DELHI = [77.1025, 28.7041]   # Delhi coordinates (lon, lat)
+plot_geodetic_curve(VIENNA, DELHI, output_file="vienna_delhi_map.png")
